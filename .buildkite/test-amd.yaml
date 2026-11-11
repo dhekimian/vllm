@@ -6321,3 +6321,64 @@ steps:
   commands:
   - pytest -v -s tests/jit_monitor/test_no_runtime_jit_rocm.py --timeout=300
   - pytest -v -s tests/jit_monitor/test_flydsl_contract.py
+
+#####################################################################################################################################
+#                                       DevLab: gfx1151 (Strix Halo) and gfx1201 (Radeon AI PRO R9700)                              #
+#####################################################################################################################################
+# Runs on DevLab Dispatch hosts (queues amd_gfx1151, amd_gfx1201). mirror_hardwares amddevlab: only the amd-rocm/devlab pipeline
+# (AMD_MIRROR_HW=amddevlab) renders these while they are being validated.
+
+- label: ":amd: (Strix Halo) Basic Models (Initialization)"
+  timeout_in_minutes: 30
+  mirror_hardwares: [amddevlab]
+  dind: false
+  agent_pool: gfx1151
+  working_dir: "/vllm-workspace/tests"
+  commands:
+  - pytest -v -s models/test_initialization.py::test_can_initialize_small_subset
+
+- label: ":amd: (Strix Halo) Samplers"
+  timeout_in_minutes: 40
+  mirror_hardwares: [amddevlab]
+  dind: false
+  agent_pool: gfx1151
+  working_dir: "/vllm-workspace/tests"
+  commands:
+  - pytest -v -s samplers -k "not test_beam_search_passes_multimodal_data"
+
+- label: ":amd: (Strix Halo) V1 Engine"
+  timeout_in_minutes: 60
+  mirror_hardwares: [amddevlab]
+  dind: false
+  agent_pool: gfx1151
+  working_dir: "/vllm-workspace/tests"
+  commands:
+  - pytest -v -s v1/engine
+
+- label: ":amd: (R9700) Basic Models (Initialization)"
+  timeout_in_minutes: 30
+  mirror_hardwares: [amddevlab]
+  dind: false
+  agent_pool: gfx1201
+  working_dir: "/vllm-workspace/tests"
+  commands:
+  - pytest -v -s models/test_initialization.py::test_can_initialize_small_subset
+
+- label: ":amd: (R9700) Samplers"
+  timeout_in_minutes: 40
+  mirror_hardwares: [amddevlab]
+  dind: false
+  agent_pool: gfx1201
+  working_dir: "/vllm-workspace/tests"
+  commands:
+  - pytest -v -s samplers -k "not test_beam_search_passes_multimodal_data"
+
+- label: ":amd: (R9700) V1 Engine"
+  timeout_in_minutes: 60
+  mirror_hardwares: [amddevlab]
+  dind: false
+  agent_pool: gfx1201
+  working_dir: "/vllm-workspace/tests"
+  commands:
+  - pytest -v -s v1/engine
+
