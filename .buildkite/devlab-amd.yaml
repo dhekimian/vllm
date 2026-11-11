@@ -1,0 +1,47 @@
+# DevLab gfx1151 / gfx1201 test lane (amd-rocm/devlab).
+#
+# Runs on DevLab Dispatch machines: each job gets a fresh VM (gfx1201) or a
+# cleaned bare-metal host (gfx1151) with a single-use buildkite-agent and
+# Docker on the host. No Kubernetes, so these are plain Docker steps instead
+# of test-template-amd.j2's pod specs.
+#
+# The per-build CI image has no gfx1151/gfx1201 kernels (CI_ARCH), so this
+# lane tests the release image that matches this branch's commit
+# (v0.33.0rc3), with this checkout's tests. The host's pip/uv index config is
+# mounted when present.
+#
+# Upload with: buildkite-agent pipeline upload .buildkite/devlab-amd.yaml
+steps:
+  - label: ":amd: DevLab {{matrix.test}} on {{matrix.queue}}"
+    agents:
+      queue: "{{matrix.queue}}"
+    timeout_in_minutes: 90
+    matrix:
+      setup:
+        queue:
+          - amd_gfx1151
+          - amd_gfx1201
+        test:
+          - "models/test_initialization.py::test_can_initialize_small_subset"
+          - "samplers"
+          - "v1/engine"
+    command: |
+      set -euo pipefail
+      hostname
+      mounts=()
+      for f in /etc/pip.conf /etc/uv/uv.toml; do
+        if [ -f "$$f" ]; then mounts+=(-v "$$f:$$f:ro"); fi
+      done
+      docker run --rm \
+        --device=/dev/kfd --device=/dev/dri \
+        --ipc=host --shm-size=16g \
+        -v "$$PWD:/src:ro" "$${mounts[@]}" \
+        -e VLLM_WORKER_MULTIPROC_METHOD=spawn \
+        --entrypoint bash \
+        vllm/vllm-openai-rocm@sha256:4fcd39b758b660c4e9c345c021e2ea8f0ccdb31e3c32507d676cc3005ae83fba \
+        -c 'set -e
+          cp -a /src/. /work; rm -rf /work/vllm /work/.git; cd /work
+          uv pip install --system -q -r requirements/test/rocm.txt
+          uv pip install --system -q tests/vllm_test_utils
+          cd tests
+          python3 -m pytest -v -s "{{matrix.test}}"'
